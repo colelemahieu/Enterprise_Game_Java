@@ -2,13 +2,13 @@
 
 ## Linux Instructions
 
-### Clone the repository
+Clone the repository:
 ```bash
 git clone https://github.com/colelemahieu/Enterprise_Game_Java.git
 cd Enterprise_Game_Java
 ```
 
-### Run the launch game
+Run the game:
 ```bash
 ./run_game.sh
 ```
