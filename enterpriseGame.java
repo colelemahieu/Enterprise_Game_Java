@@ -12,9 +12,9 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     // Game constants
     private static int CANVAS_WIDTH = 1200;
     private static int CANVAS_HEIGHT = 800;
-    private static int SHIP_WIDTH = 120;
-    private static int SHIP_HEIGHT = 120;
-    private static int ASTEROID_SIZE = 80;
+    private static int SHIP_WIDTH = 210;
+    private static int SHIP_HEIGHT = 210;
+    private static int ASTEROID_SIZE = 120;
     
     // Game variables
     private int shipX, shipY;
@@ -73,7 +73,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                 CANVAS_HEIGHT = getHeight();
                 // Update ship position when window resizes
                 if (!gameOver) {
-                    shipY = CANVAS_HEIGHT - 150;
+                    shipY = CANVAS_HEIGHT - SHIP_HEIGHT;
                 }
             }
         });
@@ -144,14 +144,15 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     
     private void initGame() {
         shipX = CANVAS_WIDTH / 2 - SHIP_WIDTH / 2;
-        shipY = CANVAS_HEIGHT - 150;
+        shipY = CANVAS_HEIGHT - SHIP_HEIGHT;
         score = 0;
         gameOver = false;
         asteroids.clear();
         asteroidSpeed = 4.0;
         asteroidRate = 2000;
         shipSpeed = 20;
-        
+
+	
         // Game loop timer (60 FPS)
         gameTimer = new Timer(16, this);
         gameTimer.start();
