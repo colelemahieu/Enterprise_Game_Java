@@ -10,22 +10,22 @@ import javax.imageio.ImageIO;
 
 public class enterpriseGame extends JPanel implements ActionListener, KeyListener {
     // Game constants
-    private static final int CANVAS_WIDTH = 600;
-    private static final int CANVAS_HEIGHT = 400;
-    private static final int SHIP_WIDTH = 60;
-    private static final int SHIP_HEIGHT = 60;
-    private static final int ASTEROID_SIZE = 30;
+    private static int CANVAS_WIDTH = 1200;
+    private static int CANVAS_HEIGHT = 800;
+    private static int SHIP_WIDTH = 120;
+    private static int SHIP_HEIGHT = 120;
+    private static int ASTEROID_SIZE = 80;
     
     // Game variables
     private int shipX, shipY;
-    private int shipSpeed = 10;
+    private int shipSpeed = 20;
     private boolean[] keys = new boolean[256];
     private ArrayList<Asteroid> asteroids = new ArrayList<>();
     private int score = 0;
     private boolean gameOver = false;
     
     // Difficulty variables
-    private double asteroidSpeed = 2.0;
+    private double asteroidSpeed = 4.0;
     private int asteroidRate = 2000;
     
     // Images
@@ -61,6 +61,22 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         setBackground(Color.BLACK);
         setFocusable(true);
         addKeyListener(this);
+        
+        // Enable double buffering for smoother rendering
+        setDoubleBuffered(true);
+        
+        // Add component listener to handle window resizing
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                CANVAS_WIDTH = getWidth();
+                CANVAS_HEIGHT = getHeight();
+                // Update ship position when window resizes
+                if (!gameOver) {
+                    shipY = CANVAS_HEIGHT - 150;
+                }
+            }
+        });
         
         // Mouse listener for restart button
         addMouseListener(new MouseAdapter() {
@@ -128,13 +144,13 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     
     private void initGame() {
         shipX = CANVAS_WIDTH / 2 - SHIP_WIDTH / 2;
-        shipY = CANVAS_HEIGHT - 80;
+        shipY = CANVAS_HEIGHT - 150;
         score = 0;
         gameOver = false;
         asteroids.clear();
-        asteroidSpeed = 2.0;
+        asteroidSpeed = 4.0;
         asteroidRate = 2000;
-        shipSpeed = 10;
+        shipSpeed = 20;
         
         // Game loop timer (60 FPS)
         gameTimer = new Timer(16, this);
@@ -179,8 +195,8 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             moveShip();
             updateAsteroids();
             checkCollisions();
+            repaint();
         }
-        repaint();
     }
     
     private void moveShip() {
@@ -224,7 +240,12 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
+        
+        // Enable anti-aliasing and rendering hints for better quality
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
         
         if (!gameOver) {
             // Draw ship
@@ -237,23 +258,23 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             
             // Draw score
             g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
-            g2d.drawString("Score: " + score, 10, 20);
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 32));
+            g2d.drawString("Score: " + score, 20, 50);
         } else {
             // Game over screen
             g2d.setColor(Color.RED);
-            g2d.setFont(new Font("SansSerif", Font.BOLD, 32));
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 64));
             FontMetrics fm = g2d.getFontMetrics();
             String gameOverText = "Game Over";
             int x = (CANVAS_WIDTH - fm.stringWidth(gameOverText)) / 2;
             g2d.drawString(gameOverText, x, CANVAS_HEIGHT / 2);
             
             g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("SansSerif", Font.PLAIN, 20));
+            g2d.setFont(new Font("SansSerif", Font.PLAIN, 40));
             fm = g2d.getFontMetrics();
             String scoreText = "Final Score: " + score;
             x = (CANVAS_WIDTH - fm.stringWidth(scoreText)) / 2;
-            g2d.drawString(scoreText, x, CANVAS_HEIGHT / 2 + 30);
+            g2d.drawString(scoreText, x, CANVAS_HEIGHT / 2 + 80);
             
             // Draw restart button
             Rectangle buttonRect = getRestartButtonRect();
@@ -275,7 +296,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             } else {
                 g2d.setColor(Color.BLUE);
             }
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 32));
             fm = g2d.getFontMetrics();
             String buttonText = "Restart";
             x = buttonRect.x + (buttonRect.width - fm.stringWidth(buttonText)) / 2;
@@ -285,10 +306,10 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     }
     
     private Rectangle getRestartButtonRect() {
-        int buttonW = 140;
-        int buttonH = 40;
+        int buttonW = 280;
+        int buttonH = 80;
         int buttonX = CANVAS_WIDTH / 2 - buttonW / 2;
-        int buttonY = CANVAS_HEIGHT / 2 + 50;
+        int buttonY = CANVAS_HEIGHT / 2 + 120;
         return new Rectangle(buttonX, buttonY, buttonW, buttonH);
     }
     
@@ -316,10 +337,15 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             
             frame.add(game);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setResizable(false);
-            frame.pack();
-            frame.setLocationRelativeTo(null);
+            frame.setUndecorated(false); // Keep window decorations (close button)
+            
+            // Set to maximized/fullscreen mode while keeping decorations
+            frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+            
             frame.setVisible(true);
+            
+            // Request focus for keyboard input
+            game.requestFocusInWindow();
         });
     }
 }

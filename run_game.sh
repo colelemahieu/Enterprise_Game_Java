@@ -11,6 +11,6 @@ if [ ! -f enterpriseGame.class ] || [ enterpriseGame.java -nt enterpriseGame.cla
     echo "Compilation successful!"
 fi
 
-# Run the game
+# Run the game with performance optimizations
 echo "Starting game..."
-java -Djava.awt.headless=false enterpriseGame
+java -Djava.awt.headless=false -Dsun.java2d.opengl=true -Dsun.java2d.accthresh=0 enterpriseGame
