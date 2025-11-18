@@ -1,5 +1,5 @@
 # Enterprise Java Game
-A classic arcade-style game produced with Java. Blast asteroids with the U.S.S. Enterprise! 
+A classic arcade-style game produced with Java. Dodge asteroids with the U.S.S. Enterprise! 
 
 ## Linux Instructions
 
