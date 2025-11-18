@@ -36,6 +36,9 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private Timer gameTimer;
     private Timer asteroidTimer;
     private Timer difficultyTimer;
+
+    // Font
+    private Font arcadeFont;
     
     // Random generator
     private Random random = new Random();
@@ -114,11 +117,16 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             // Try to load images from Images folder
             shipImage = ImageIO.read(new File("Images/enterprise.png"));
             asteroidImage = ImageIO.read(new File("Images/asteroid_cartoon.png"));
-        } catch (IOException e) {
-            System.err.println("Could not load images: " + e.getMessage());
+
+	    // Load custom arcade font
+        arcadeFont = Font.createFont(Font.TRUETYPE_FONT, 
+                                     new File("Fonts/PressStart2P.ttf")).deriveFont(24f);
+        } catch (IOException | FontFormatException e) {
+            System.err.println("Could not load resources: " + e.getMessage());
             // Create placeholder images if loading fails
             shipImage = createPlaceholderShip();
             asteroidImage = createPlaceholderAsteroid();
+	    arcadeFont = new Font("Monospaced", Font.BOLD, 32);
         }
     }
     
@@ -259,19 +267,19 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             
             // Draw score
             g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 32));
-            g2d.drawString("Score: " + score, 20, 50);
+            g2d.setFont(arcadeFont.deriveFont(48f));
+            g2d.drawString("Score: " + score, 20, 70);
         } else {
             // Game over screen
             g2d.setColor(Color.RED);
-            g2d.setFont(new Font("SansSerif", Font.BOLD, 64));
+            g2d.setFont(arcadeFont.deriveFont(64f));
             FontMetrics fm = g2d.getFontMetrics();
             String gameOverText = "Game Over";
             int x = (CANVAS_WIDTH - fm.stringWidth(gameOverText)) / 2;
             g2d.drawString(gameOverText, x, CANVAS_HEIGHT / 2);
             
             g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("SansSerif", Font.PLAIN, 40));
+            g2d.setFont(arcadeFont.deriveFont(40f));
             fm = g2d.getFontMetrics();
             String scoreText = "Final Score: " + score;
             x = (CANVAS_WIDTH - fm.stringWidth(scoreText)) / 2;
@@ -297,7 +305,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             } else {
                 g2d.setColor(Color.BLUE);
             }
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 32));
+            g2d.setFont(arcadeFont.deriveFont(32f));
             fm = g2d.getFontMetrics();
             String buttonText = "Restart";
             x = buttonRect.x + (buttonRect.width - fm.stringWidth(buttonText)) / 2;
