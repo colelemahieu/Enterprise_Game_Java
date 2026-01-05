@@ -31,6 +31,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     // Images
     private BufferedImage shipImage;
     private BufferedImage asteroidImage;
+    private BufferedImage explosionImage;
     
     // Timers
     private Timer gameTimer;
@@ -117,15 +118,17 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             // Try to load images from Images folder
             shipImage = ImageIO.read(new File("Images/enterprise.png"));
             asteroidImage = ImageIO.read(new File("Images/asteroid_cartoon.png"));
+	    explosionImage = ImageIO.read(new File("Images/enterprise_explosion.png"));
 
 	    // Load custom arcade font
-        arcadeFont = Font.createFont(Font.TRUETYPE_FONT, 
+	    arcadeFont = Font.createFont(Font.TRUETYPE_FONT, 
                                      new File("Fonts/PressStart2P.ttf")).deriveFont(24f);
         } catch (IOException | FontFormatException e) {
             System.err.println("Could not load resources: " + e.getMessage());
             // Create placeholder images if loading fails
             shipImage = createPlaceholderShip();
             asteroidImage = createPlaceholderAsteroid();
+	    explosionImage = null; 
 	    arcadeFont = new Font("Monospaced", Font.BOLD, 32);
         }
     }
@@ -271,7 +274,16 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             g2d.drawString("Score: " + score, 20, 70);
         } else {
             // Game over screen
-            g2d.setColor(Color.RED);
+	    if (explosionImage != null) {
+		// Draw explosion image 
+		g2d.drawImage(explosionImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, null);
+        
+		// semi-transparent overlay 
+		g2d.setColor(new Color(0, 0, 0, 100)); 
+		g2d.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+	    }
+	    
+            g2d.setColor(Color.WHITE);
             g2d.setFont(arcadeFont.deriveFont(64f));
             FontMetrics fm = g2d.getFontMetrics();
             String gameOverText = "Game Over";
