@@ -23,6 +23,10 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private ArrayList<Asteroid> asteroids = new ArrayList<>();
     private int score = 0;
     private boolean gameOver = false;
+
+    // star field variables
+    private ArrayList<Star> stars = new ArrayList<>();
+    private static final int NUM_STARS = 150;
     
     // Difficulty variables
     private double asteroidSpeed = 4.0;
@@ -59,6 +63,20 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             this.speed = speed;
         }
     }
+
+    // Star class
+    class Star {
+	double x, y;
+	double speed;
+	int brightness;
+    
+	Star(double x, double y, double speed, int brightness) {
+	    this.x = x;
+	    this.y = y;
+	    this.speed = speed;
+	    this.brightness = brightness;
+	}
+    }
     
     public enterpriseGame() {
         setPreferredSize(new Dimension(CANVAS_WIDTH, CANVAS_HEIGHT));
@@ -75,10 +93,22 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             public void componentResized(ComponentEvent e) {
                 CANVAS_WIDTH = getWidth();
                 CANVAS_HEIGHT = getHeight();
-                // Update ship position when window resizes
+
+		// Update ship position when window resizes
                 if (!gameOver) {
                     shipY = CANVAS_HEIGHT - SHIP_HEIGHT;
                 }
+
+		// Re-initialize stars with new canvas dimensions
+		stars.clear();
+		for (int i = 0; i < NUM_STARS; i++) {
+		    double x = random.nextDouble() * CANVAS_WIDTH;
+		    double y = random.nextDouble() * CANVAS_HEIGHT;
+		    double speed = 1.5;
+		    int brightness = 150 + random.nextInt(106);
+		    stars.add(new Star(x, y, speed, brightness));
+		}
+		
             }
         });
         
@@ -163,6 +193,16 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         asteroidRate = 2000;
         shipSpeed = 20;
 
+	// Initialize stars
+	stars.clear();
+	for (int i = 0; i < NUM_STARS; i++) {
+	    double x = random.nextDouble() * CANVAS_WIDTH;
+	    double y = random.nextDouble() * CANVAS_HEIGHT;
+	    double speed = 1.5; // Constant speed all stars
+	    int brightness = 150 + random.nextInt(106); // 150-255
+	    stars.add(new Star(x, y, speed, brightness));
+	}
+
 	
         // Game loop timer (60 FPS)
         gameTimer = new Timer(16, this);
@@ -205,6 +245,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     public void actionPerformed(ActionEvent e) {
         if (!gameOver) {
             moveShip();
+	    updateStars();
             updateAsteroids();
             checkCollisions();
             repaint();
@@ -232,6 +273,23 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             }
         }
     }
+
+    private void updateStars() {
+	for (Star star : stars) {
+	    star.y += star.speed;
+        
+	    // Wrap around when star goes off screen
+	    if (star.y > CANVAS_HEIGHT) {
+		star.y = 0;
+		star.x = random.nextDouble() * CANVAS_WIDTH;
+	    }
+        
+	    // Twinkling effect
+	    if (random.nextDouble() < 0.02) { // 2% chance per frame
+		star.brightness = 150 + random.nextInt(106);
+	    }
+	}
+    }
     
     private void checkCollisions() {
         for (Asteroid a : asteroids) {
@@ -258,6 +316,12 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+
+	// Draw stars (background)
+	for (Star star : stars) {
+	    g2d.setColor(new Color(255, 255, 255, star.brightness));
+	    g2d.fillRect((int)star.x, (int)star.y, 1, 1);
+	}
         
         if (!gameOver) {
             // Draw ship
