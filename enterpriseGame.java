@@ -29,18 +29,21 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private static final int NUM_STARS = 150;
     
     // Difficulty variables
-    private double asteroidSpeed = 4.0;
-    private int asteroidRate = 2000;
+    private double asteroidSpeed = 2.5;
+    private int asteroidRate = 3000;
+    private int maxAsteroidsOnScreen = 2; // start with max 2 on screen
     
     // Images
     private BufferedImage shipImage;
     private BufferedImage asteroidImage;
     private BufferedImage explosionImage;
+    private BufferedImage birdOfPreyImage;
     
     // Timers
     private Timer gameTimer;
     private Timer asteroidTimer;
     private Timer difficultyTimer;
+    private Timer birdOfPreyTimer;
 
     // Font
     private Font arcadeFont;
@@ -51,6 +54,16 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     // Mouse tracking for restart button
     private Point mousePos = new Point();
     private boolean isHoveringRestart = false;
+
+    // Bird of Prey enemy ship
+    private static final int BIRD_WIDTH = 180;
+    private static final int BIRD_HEIGHT = 180;
+    private int birdX, birdY;
+    private boolean birdActive = false;
+    private double birdSpeed = 15.0; // Horizontal tracking speed
+    private ArrayList<Photon> photons = new ArrayList<>();
+    private int photonCooldown = 0;
+    private static final int PHOTON_FIRE_RATE = 60;
     
     // Asteroid class
     class Asteroid {
@@ -75,6 +88,18 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 	    this.y = y;
 	    this.speed = speed;
 	    this.brightness = brightness;
+	}
+    }
+
+    // photon torpedo class
+    class Photon {
+	double x, y;
+	double speed = 8.0;
+	static final int SIZE = 10;
+	
+	Photon(double x, double y) {
+	    this.x = x;
+	    this.y = y;
 	}
     }
     
@@ -149,6 +174,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             shipImage = ImageIO.read(new File("Images/enterprise.png"));
             asteroidImage = ImageIO.read(new File("Images/asteroid_cartoon.png"));
 	    explosionImage = ImageIO.read(new File("Images/enterprise_explosion.png"));
+	    birdOfPreyImage = ImageIO.read(new File("Images/bird_of_prey.png"));
 
 	    // Load custom arcade font
 	    arcadeFont = Font.createFont(Font.TRUETYPE_FONT, 
@@ -158,7 +184,8 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             // Create placeholder images if loading fails
             shipImage = createPlaceholderShip();
             asteroidImage = createPlaceholderAsteroid();
-	    explosionImage = null; 
+	    explosionImage = null;
+	    birdOfPreyImage = createPlaceholderBird();
 	    arcadeFont = new Font("Monospaced", Font.BOLD, 32);
         }
     }
@@ -182,6 +209,17 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         g.dispose();
         return img;
     }
+
+    private BufferedImage createPlaceholderBird() {
+        BufferedImage img = new BufferedImage(BIRD_WIDTH, BIRD_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        g.setColor(Color.RED);
+        int[] xPoints = {BIRD_WIDTH/2, 0, BIRD_WIDTH};
+        int[] yPoints = {BIRD_HEIGHT, 0, 0};
+        g.fillPolygon(xPoints, yPoints, 3);
+        g.dispose();
+        return img;
+    }
     
     private void initGame() {
         shipX = CANVAS_WIDTH / 2 - SHIP_WIDTH / 2;
@@ -189,9 +227,15 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         score = 0;
         gameOver = false;
         asteroids.clear();
-        asteroidSpeed = 4.0;
-        asteroidRate = 2000;
+        asteroidSpeed = 2.5;
+        asteroidRate = 3000;
+	maxAsteroidsOnScreen = 2;
         shipSpeed = 20;
+
+	// Reset Bird of Prey
+        birdActive = false;
+        photons.clear();
+        photonCooldown = 0;
 
 	// Initialize stars
 	stars.clear();
@@ -201,6 +245,13 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 	    double speed = 1.5; // Constant speed all stars
 	    int brightness = 150 + random.nextInt(106); // 150-255
 	    stars.add(new Star(x, y, speed, brightness));
+	}
+
+	// Start with 1-2 asteroids immediately visible
+	for (int i = 0; i < 2; i++) {
+	    double x = random.nextDouble() * (CANVAS_WIDTH - ASTEROID_SIZE);
+	    double y = random.nextDouble() * CANVAS_HEIGHT * 0.5; // Spawn in upper half
+	    asteroids.add(new Asteroid(x, y, asteroidSpeed));
 	}
 
 	
@@ -215,26 +266,49 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         // Difficulty increase timer
         difficultyTimer = new Timer(3000, e -> increaseDifficulty());
         difficultyTimer.start();
+
+	// Bird of Prey spawn timer - appears after 3 seconds
+        birdOfPreyTimer = new Timer(3000, e -> {
+            spawnBirdOfPrey();
+            ((Timer)e.getSource()).stop(); // Stop timer after spawning once
+        });
+        birdOfPreyTimer.setRepeats(false); // Only fire once
+        birdOfPreyTimer.start();
+    }
+
+    private void spawnBirdOfPrey() {
+        birdActive = true;
+        birdX = CANVAS_WIDTH / 2 - BIRD_WIDTH / 2; // Center horizontally
+        birdY = 50; // Near top of screen
+        photonCooldown = PHOTON_FIRE_RATE;
+        photons.clear(); // Clear any existing photons
     }
     
     private void restartGame() {
         if (asteroidTimer != null) asteroidTimer.stop();
         if (difficultyTimer != null) difficultyTimer.stop();
+	if (birdOfPreyTimer != null) birdOfPreyTimer.stop();
         initGame();
         repaint();
     }
     
     private void createAsteroid() {
-        double x = random.nextDouble() * (CANVAS_WIDTH - ASTEROID_SIZE);
-        asteroids.add(new Asteroid(x, -ASTEROID_SIZE, asteroidSpeed));
+	if (asteroids.size() < maxAsteroidsOnScreen) {
+	    double x = random.nextDouble() * (CANVAS_WIDTH - ASTEROID_SIZE);
+	    asteroids.add(new Asteroid(x, -ASTEROID_SIZE, asteroidSpeed));
+	}
     }
     
     private void increaseDifficulty() {
-        if (asteroidSpeed < 10) {
-            asteroidSpeed += 0.3;
+        // Very gradual increase in asteroid density
+        // Increase max asteroids on screen every 10 seconds, capping at 8
+        if (maxAsteroidsOnScreen < 8) {
+            maxAsteroidsOnScreen++;
         }
-        if (asteroidRate > 400) {
-            asteroidRate -= 150;
+        
+        // relatively sparse spawn interval (minimum 1 second)
+        if (asteroidRate > 1000) {
+            asteroidRate -= 200;
             asteroidTimer.stop();
             asteroidTimer = new Timer(asteroidRate, e -> createAsteroid());
             asteroidTimer.start();
@@ -247,6 +321,8 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             moveShip();
 	    updateStars();
             updateAsteroids();
+	    updateBirdOfPrey();
+            updatePhotons();
             checkCollisions();
             repaint();
         }
@@ -290,8 +366,49 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 	    }
 	}
     }
+
+    private void updateBirdOfPrey() {
+        if (!birdActive) return;
+        
+        // Track Enterprise horizontally
+        int enterpriseCenter = shipX + SHIP_WIDTH / 2;
+        int birdCenter = birdX + BIRD_WIDTH / 2;
+        
+        if (birdCenter < enterpriseCenter - 5) {
+            birdX += birdSpeed;
+            if (birdX + BIRD_WIDTH > CANVAS_WIDTH) {
+                birdX = CANVAS_WIDTH - BIRD_WIDTH;
+            }
+        } else if (birdCenter > enterpriseCenter + 5) {
+            birdX -= birdSpeed;
+            if (birdX < 0) {
+                birdX = 0;
+            }
+        }
+        
+        // Fire photon torpedoes
+        photonCooldown--;
+        if (photonCooldown <= 0) {
+            photons.add(new Photon(birdX + BIRD_WIDTH / 2 - Photon.SIZE / 2, 
+                                   birdY + BIRD_HEIGHT));
+            photonCooldown = PHOTON_FIRE_RATE;
+        }
+    }
+    
+    private void updatePhotons() {
+        for (int i = photons.size() - 1; i >= 0; i--) {
+            Photon p = photons.get(i);
+            p.y += p.speed;
+            
+            // Remove photons that go off screen
+            if (p.y > CANVAS_HEIGHT) {
+                photons.remove(i);
+            }
+        }
+    }
     
     private void checkCollisions() {
+	// check asteroid collisions
         for (Asteroid a : asteroids) {
             if (a.x < shipX + SHIP_WIDTH &&
                 a.x + ASTEROID_SIZE > shipX &&
@@ -301,6 +418,22 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                 gameTimer.stop();
                 asteroidTimer.stop();
                 difficultyTimer.stop();
+		if (birdOfPreyTimer != null) birdOfPreyTimer.stop();
+                break;
+            }
+        }
+
+	// Check photon torpedo collisions
+        for (Photon p : photons) {
+            if (p.x < shipX + SHIP_WIDTH &&
+                p.x + Photon.SIZE > shipX &&
+                p.y < shipY + SHIP_HEIGHT &&
+                p.y + Photon.SIZE > shipY) {
+                gameOver = true;
+                gameTimer.stop();
+                asteroidTimer.stop();
+                difficultyTimer.stop();
+                if (birdOfPreyTimer != null) birdOfPreyTimer.stop();
                 break;
             }
         }
@@ -330,6 +463,20 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             // Draw asteroids
             for (Asteroid a : asteroids) {
                 g2d.drawImage(asteroidImage, (int)a.x, (int)a.y, ASTEROID_SIZE, ASTEROID_SIZE, null);
+            }
+
+	    // Draw Bird of Prey
+            if (birdActive) {
+                g2d.drawImage(birdOfPreyImage, birdX, birdY, BIRD_WIDTH, BIRD_HEIGHT, null);
+            }
+            
+            // Draw photon torpedoes
+            for (Photon p : photons) {
+                g2d.setColor(Color.RED);
+                g2d.fillOval((int)p.x, (int)p.y, Photon.SIZE, Photon.SIZE);
+                // Add glow effect
+                g2d.setColor(new Color(255, 100, 0, 100));
+                g2d.fillOval((int)p.x - 3, (int)p.y - 3, Photon.SIZE + 6, Photon.SIZE + 6);
             }
             
             // Draw score
