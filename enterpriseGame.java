@@ -22,6 +22,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private boolean[] keys = new boolean[256];
     private ArrayList<Asteroid> asteroids = new ArrayList<>();
     private int score = 0;
+    private boolean initialized = false;
     private boolean gameOver = false;
 
     // star field variables
@@ -165,7 +166,6 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         });
         
         loadImages();
-        initGame();
     }
     
     private void loadImages() {
@@ -221,60 +221,74 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         return img;
     }
     
-    private void initGame() {
-        shipX = CANVAS_WIDTH / 2 - SHIP_WIDTH / 2;
-        shipY = CANVAS_HEIGHT - SHIP_HEIGHT;
-        score = 0;
-        gameOver = false;
-        asteroids.clear();
-        asteroidSpeed = 2.5;
-        asteroidRate = 3000;
-	maxAsteroidsOnScreen = 2;
-        shipSpeed = 20;
+   public void initGame() {
+       
+       // Get current actual dimensions
+       CANVAS_WIDTH = getWidth();
+       CANVAS_HEIGHT = getHeight();
+    
+       shipX = CANVAS_WIDTH / 2 - SHIP_WIDTH / 2;
+       shipY = CANVAS_HEIGHT - SHIP_HEIGHT;
+       score = 0;
+       gameOver = false;
+       asteroids.clear();
+       asteroidSpeed = 2.5;
+       asteroidRate = 3000;
+       maxAsteroidsOnScreen = 2;
+       shipSpeed = 20;
 
-	// Reset Bird of Prey
-        birdActive = false;
-        photons.clear();
-        photonCooldown = 0;
+       // Reset Bird of Prey
+       birdActive = false;
+       photons.clear();
+       photonCooldown = 0;
 
-	// Initialize stars
-	stars.clear();
-	for (int i = 0; i < NUM_STARS; i++) {
-	    double x = random.nextDouble() * CANVAS_WIDTH;
-	    double y = random.nextDouble() * CANVAS_HEIGHT;
-	    double speed = 1.5; // Constant speed all stars
-	    int brightness = 150 + random.nextInt(106); // 150-255
-	    stars.add(new Star(x, y, speed, brightness));
-	}
+       // Initialize stars
+       stars.clear();
+       for (int i = 0; i < NUM_STARS; i++) {
+	   double x = random.nextDouble() * CANVAS_WIDTH;
+	   double y = random.nextDouble() * CANVAS_HEIGHT;
+	   double speed = 1.5; // Constant speed all stars
+	   int brightness = 150 + random.nextInt(106); // 150-255
+	   stars.add(new Star(x, y, speed, brightness));
+       }
 
-	// Start with 1-2 asteroids immediately visible
-	for (int i = 0; i < 2; i++) {
-	    double x = random.nextDouble() * (CANVAS_WIDTH - ASTEROID_SIZE);
-	    double y = random.nextDouble() * CANVAS_HEIGHT * 0.5; // Spawn in upper half
-	    asteroids.add(new Asteroid(x, y, asteroidSpeed));
-	}
+       // Start with 1-2 asteroids visible and separated
+       double firstX = random.nextDouble() * (CANVAS_WIDTH / 2 - ASTEROID_SIZE);
+       double firstY = random.nextDouble() * CANVAS_HEIGHT * 0.3; 
+       double secondX = (CANVAS_WIDTH / 2) + random.nextDouble() * (CANVAS_WIDTH / 2 - ASTEROID_SIZE);
+       double secondY = (CANVAS_HEIGHT * 0.2) + random.nextDouble() * CANVAS_HEIGHT * 0.3;
+       asteroids.add(new Asteroid(firstX, firstY, asteroidSpeed));
+       asteroids.add(new Asteroid(secondX, secondY, asteroidSpeed));
 
-	
-        // Game loop timer (60 FPS)
-        gameTimer = new Timer(16, this);
-        gameTimer.start();
-        
-        // Asteroid spawn timer
-        asteroidTimer = new Timer(asteroidRate, e -> createAsteroid());
-        asteroidTimer.start();
-        
-        // Difficulty increase timer
-        difficultyTimer = new Timer(3000, e -> increaseDifficulty());
-        difficultyTimer.start();
+    
+       // Stop any existing timers first
+       if (gameTimer != null) gameTimer.stop();
+       if (asteroidTimer != null) asteroidTimer.stop();
+       if (difficultyTimer != null) difficultyTimer.stop();
+       if (birdOfPreyTimer != null) birdOfPreyTimer.stop();
+    
+       // Game loop timer (60 FPS)
+       gameTimer = new Timer(16, this);
+       gameTimer.start();
+    
+       // Asteroid spawn timer
+       asteroidTimer = new Timer(asteroidRate, e -> createAsteroid());
+       asteroidTimer.start();
+    
+       // Difficulty increase timer
+       difficultyTimer = new Timer(3000, e -> increaseDifficulty());
+       difficultyTimer.start();
 
-	// Bird of Prey spawn timer - appears after 3 seconds
-        birdOfPreyTimer = new Timer(3000, e -> {
-            spawnBirdOfPrey();
-            ((Timer)e.getSource()).stop(); // Stop timer after spawning once
-        });
-        birdOfPreyTimer.setRepeats(false); // Only fire once
-        birdOfPreyTimer.start();
-    }
+       // Bird of Prey spawn timer - appears after 3 seconds
+       birdOfPreyTimer = new Timer(3000, e -> {
+	       spawnBirdOfPrey();
+	       ((Timer)e.getSource()).stop(); // Stop timer after spawning once
+       });
+       birdOfPreyTimer.setRepeats(false); // Only fire once
+       birdOfPreyTimer.start();
+
+       initialized = true;
+   }
 
     private void spawnBirdOfPrey() {
         birdActive = true;
@@ -442,6 +456,11 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+
+	if (!initialized) {
+	    return; // Don't paint anything until initialized
+	}
+	
         Graphics2D g2d = (Graphics2D) g;
         
         // Enable anti-aliasing and rendering hints for better quality
@@ -569,15 +588,21 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             
             frame.add(game);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setUndecorated(false); // Keep window decorations (close button)
+            frame.setUndecorated(false); // Keep window decorations 
             
             // Set to maximized/fullscreen mode while keeping decorations
             frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
             
             frame.setVisible(true);
             
-            // Request focus for keyboard input
-            game.requestFocusInWindow();
+            // Wait for the window to be fully sized, then initialize the game
+            Timer initTimer = new Timer(100, e -> {
+		    game.initGame();
+		    game.requestFocusInWindow();
+		    ((Timer)e.getSource()).stop();
+	    });
+	    initTimer.setRepeats(false);
+	    initTimer.start();
         });
     }
 }
