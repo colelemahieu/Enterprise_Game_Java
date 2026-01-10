@@ -96,7 +96,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     class Photon {
 	double x, y;
 	double speed = 8.0;
-	static final int SIZE = 10;
+	static final int SIZE = 15;
 	
 	Photon(double x, double y) {
 	    this.x = x;
@@ -491,11 +491,26 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             
             // Draw photon torpedoes
             for (Photon p : photons) {
-                g2d.setColor(Color.RED);
-                g2d.fillOval((int)p.x, (int)p.y, Photon.SIZE, Photon.SIZE);
-                // Add glow effect
+                int px = (int)p.x;
+                int py = (int)p.y;
+                
+                // Outer glow layers
+                g2d.setColor(new Color(255, 0, 0, 30));
+                g2d.fillOval(px - 12, py - 12, Photon.SIZE + 24, Photon.SIZE + 24);
+                
+                g2d.setColor(new Color(255, 50, 0, 60));
+                g2d.fillOval(px - 8, py - 8, Photon.SIZE + 16, Photon.SIZE + 16);
+                
                 g2d.setColor(new Color(255, 100, 0, 100));
-                g2d.fillOval((int)p.x - 3, (int)p.y - 3, Photon.SIZE + 6, Photon.SIZE + 6);
+                g2d.fillOval(px - 4, py - 4, Photon.SIZE + 8, Photon.SIZE + 8);
+                
+                // Bright core
+                g2d.setColor(new Color(255, 150, 0));
+                g2d.fillOval(px, py, Photon.SIZE, Photon.SIZE);
+                
+                // White hot center
+                g2d.setColor(Color.WHITE);
+                g2d.fillOval(px + 2, py + 2, Photon.SIZE - 4, Photon.SIZE - 4);
             }
             
             // Draw score
