@@ -296,7 +296,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private void spawnBirdOfPrey() {
         birdActive = true;
         birdX = CANVAS_WIDTH / 2 - BIRD_WIDTH / 2; // Center horizontally
-        birdY = 50; // Near top of screen
+        birdY = 100; 
         photonCooldown = PHOTON_FIRE_RATE;
         photons.clear(); // Clear any existing photons
 	birdSpawnDelay = BIRD_SPAWN_DELAY_FRAMES;
