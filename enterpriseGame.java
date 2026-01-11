@@ -15,10 +15,12 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private static int SHIP_WIDTH = 210;
     private static int SHIP_HEIGHT = 210;
     private static int ASTEROID_SIZE = 120;
+    private static final int BIRD_SPAWN_DELAY_FRAMES = 45;
     
     // Game variables
     private int shipX, shipY;
     private int shipSpeed = 20;
+    private int birdSpawnDelay = 0;
     private boolean[] keys = new boolean[256];
     private ArrayList<Asteroid> asteroids = new ArrayList<>();
     private int score = 0;
@@ -241,6 +243,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
        birdActive = false;
        photons.clear();
        photonCooldown = 0;
+       birdSpawnDelay = 0;
 
        // Initialize stars
        stars.clear();
@@ -296,6 +299,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         birdY = 50; // Near top of screen
         photonCooldown = PHOTON_FIRE_RATE;
         photons.clear(); // Clear any existing photons
+	birdSpawnDelay = BIRD_SPAWN_DELAY_FRAMES;
     }
     
     private void restartGame() {
@@ -383,6 +387,12 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 
     private void updateBirdOfPrey() {
         if (!birdActive) return;
+
+	// bird of prey does not instantly move on first appearance
+	if (birdSpawnDelay > 0) {
+            birdSpawnDelay--;
+            return;
+        }
         
         // Track Enterprise horizontally
         int enterpriseCenter = shipX + SHIP_WIDTH / 2;
