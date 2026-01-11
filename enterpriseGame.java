@@ -432,12 +432,16 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     }
     
     private void checkCollisions() {
+
 	// check asteroid collisions
+	int hitboxTopOffset = (int)(SHIP_HEIGHT * 0.2);
+        int hitboxHeight = SHIP_HEIGHT - hitboxTopOffset;
+	
         for (Asteroid a : asteroids) {
             if (a.x < shipX + SHIP_WIDTH &&
                 a.x + ASTEROID_SIZE > shipX &&
-                a.y < shipY + SHIP_HEIGHT &&
-                a.y + ASTEROID_SIZE > shipY) {
+                a.y < shipY + hitboxTopOffset + hitboxHeight &&
+                a.y + ASTEROID_SIZE > shipY + hitboxTopOffset) {
                 gameOver = true;
                 gameTimer.stop();
                 asteroidTimer.stop();
