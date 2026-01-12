@@ -64,9 +64,14 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private int birdX, birdY;
     private boolean birdActive = false;
     private double birdSpeed = 15.0; // Horizontal tracking speed
-    private ArrayList<Photon> photons = new ArrayList<>();
+    private ArrayList<Photon> enemyPhotons = new ArrayList<>();
     private int photonCooldown = 0;
     private static final int PHOTON_FIRE_RATE = 60;
+
+    // Enterprise photon torpedoes
+    private ArrayList<Photon> enterprisePhotons = new ArrayList<>();
+    private int enterprisePhotonCooldown = 0;
+    private static final int ENTERPRISE_FIRE_RATE = 20;
     
     // Asteroid class
     class Asteroid {
@@ -99,10 +104,13 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 	double x, y;
 	double speed = 8.0;
 	static final int SIZE = 15;
+	boolean fromEnterprise;
 	
-	Photon(double x, double y) {
+	Photon(double x, double y, boolean fromEnterprise) {
 	    this.x = x;
 	    this.y = y;
+	    this.fromEnterprise = fromEnterprise;
+	    this.speed = fromEnterprise ? -8.0 : 8.0;
 	}
     }
     
@@ -241,8 +249,10 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 
        // Reset Bird of Prey
        birdActive = false;
-       photons.clear();
+       enemyPhotons.clear();
+       enterprisePhotons.clear();
        photonCooldown = 0;
+       enterprisePhotonCooldown = 0;
        birdSpawnDelay = 0;
 
        // Initialize stars
@@ -298,7 +308,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         birdX = CANVAS_WIDTH / 2 - BIRD_WIDTH / 2; // Center horizontally
         birdY = 100; 
         photonCooldown = PHOTON_FIRE_RATE;
-        photons.clear(); // Clear any existing photons
+        enemyPhotons.clear(); // Clear any existing photons
 	birdSpawnDelay = BIRD_SPAWN_DELAY_FRAMES;
     }
     
@@ -341,7 +351,11 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             updateAsteroids();
 	    updateBirdOfPrey();
             updatePhotons();
+	    updateEnterprisePhotons();
             checkCollisions();
+	    if (enterprisePhotonCooldown > 0) {
+                enterprisePhotonCooldown--;
+            }
             repaint();
         }
     }
@@ -353,6 +367,16 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         if (keys[KeyEvent.VK_RIGHT] && shipX + SHIP_WIDTH < CANVAS_WIDTH) {
             shipX += shipSpeed;
         }
+	if (keys[KeyEvent.VK_SPACE] && enterprisePhotonCooldown <= 0) {
+            fireEnterprisePhoton();
+            enterprisePhotonCooldown = ENTERPRISE_FIRE_RATE;
+        }
+    }
+
+    private void fireEnterprisePhoton() {
+        double photonX = shipX + SHIP_WIDTH / 2 - Photon.SIZE / 2;
+        double photonY = shipY;
+        enterprisePhotons.add(new Photon(photonX, photonY, true));
     }
     
     private void updateAsteroids() {
@@ -413,20 +437,32 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         // Fire photon torpedoes
         photonCooldown--;
         if (photonCooldown <= 0) {
-            photons.add(new Photon(birdX + BIRD_WIDTH / 2 - Photon.SIZE / 2, 
-                                   birdY + BIRD_HEIGHT));
+            enemyPhotons.add(new Photon(birdX + BIRD_WIDTH / 2 - Photon.SIZE / 2, 
+					birdY + BIRD_HEIGHT, false));
             photonCooldown = PHOTON_FIRE_RATE;
         }
     }
     
     private void updatePhotons() {
-        for (int i = photons.size() - 1; i >= 0; i--) {
-            Photon p = photons.get(i);
+        for (int i = enemyPhotons.size() - 1; i >= 0; i--) {
+            Photon p = enemyPhotons.get(i);
             p.y += p.speed;
             
             // Remove photons that go off screen
             if (p.y > CANVAS_HEIGHT) {
-                photons.remove(i);
+                enemyPhotons.remove(i);
+            }
+        }
+    }
+
+    private void updateEnterprisePhotons() {
+        for (int i = enterprisePhotons.size() - 1; i >= 0; i--) {
+            Photon p = enterprisePhotons.get(i);
+            p.y += p.speed; // Negative speed moves upward
+            
+            // Remove photons that go off screen
+            if (p.y < -Photon.SIZE) {
+                enterprisePhotons.remove(i);
             }
         }
     }
@@ -437,7 +473,8 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 	int hitboxTopOffset = (int)(SHIP_HEIGHT * 0.2);
         int hitboxHeight = SHIP_HEIGHT - hitboxTopOffset;
 	
-        for (Asteroid a : asteroids) {
+        for (int i = asteroids.size() - 1; i >= 0; i--) {
+	    Asteroid a = asteroids.get(i);
             if (a.x < shipX + SHIP_WIDTH &&
                 a.x + ASTEROID_SIZE > shipX &&
                 a.y < shipY + hitboxTopOffset + hitboxHeight &&
@@ -451,8 +488,8 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             }
         }
 
-	// Check photon torpedo collisions
-        for (Photon p : photons) {
+	// Check photon torpedo collisions with enterprise
+        for (Photon p : enemyPhotons) {
             if (p.x < shipX + SHIP_WIDTH &&
                 p.x + Photon.SIZE > shipX &&
                 p.y < shipY + SHIP_HEIGHT &&
@@ -463,6 +500,42 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                 difficultyTimer.stop();
                 if (birdOfPreyTimer != null) birdOfPreyTimer.stop();
                 break;
+            }
+        }
+
+	// Check Enterprise photon collisions with asteroids
+        for (int i = enterprisePhotons.size() - 1; i >= 0; i--) {
+            Photon p = enterprisePhotons.get(i);
+            for (int j = asteroids.size() - 1; j >= 0; j--) {
+                Asteroid a = asteroids.get(j);
+                if (p.x < a.x + ASTEROID_SIZE &&
+                    p.x + Photon.SIZE > a.x &&
+                    p.y < a.y + ASTEROID_SIZE &&
+                    p.y + Photon.SIZE > a.y) {
+                    // Remove both if hit
+                    enterprisePhotons.remove(i);
+                    asteroids.remove(j);
+                    score += 10; // Bonus points for destroying asteroid
+                    break;
+                }
+            }
+        }
+
+	// Check enterprise photon collisions with bird of prey
+        if (birdActive) {
+            for (int i = enterprisePhotons.size() - 1; i >= 0; i--) {
+                Photon p = enterprisePhotons.get(i);
+                if (p.x < birdX + BIRD_WIDTH &&
+                    p.x + Photon.SIZE > birdX &&
+                    p.y < birdY + BIRD_HEIGHT &&
+                    p.y + Photon.SIZE > birdY) {
+                    // If hit, remove photon and bird of prey
+                    enterprisePhotons.remove(i);
+                    birdActive = false;
+                    enemyPhotons.clear(); // Clear enemy photons too
+                    score += 50; // bonus for destroying bird of prey
+                    break;
+                }
             }
         }
     }
@@ -503,8 +576,8 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                 g2d.drawImage(birdOfPreyImage, birdX, birdY, BIRD_WIDTH, BIRD_HEIGHT, null);
             }
             
-            // Draw photon torpedoes
-            for (Photon p : photons) {
+            // Draw enemy photon torpedoes
+            for (Photon p : enemyPhotons) {
                 int px = (int)p.x;
                 int py = (int)p.y;
                 
@@ -520,6 +593,30 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                 
                 // Bright core
                 g2d.setColor(new Color(255, 150, 0));
+                g2d.fillOval(px, py, Photon.SIZE, Photon.SIZE);
+                
+                // White hot center
+                g2d.setColor(Color.WHITE);
+                g2d.fillOval(px + 2, py + 2, Photon.SIZE - 4, Photon.SIZE - 4);
+            }
+
+	    // Draw enterprise photon torpedoes (blue)
+            for (Photon p : enterprisePhotons) {
+                int px = (int)p.x;
+                int py = (int)p.y;
+                
+                // Outer glow layers (blue)
+                g2d.setColor(new Color(0, 100, 255, 30));
+                g2d.fillOval(px - 12, py - 12, Photon.SIZE + 24, Photon.SIZE + 24);
+                
+                g2d.setColor(new Color(0, 150, 255, 60));
+                g2d.fillOval(px - 8, py - 8, Photon.SIZE + 16, Photon.SIZE + 16);
+                
+                g2d.setColor(new Color(50, 200, 255, 100));
+                g2d.fillOval(px - 4, py - 4, Photon.SIZE + 8, Photon.SIZE + 8);
+                
+                // Bright core (cyan/blue)
+                g2d.setColor(new Color(100, 220, 255));
                 g2d.fillOval(px, py, Photon.SIZE, Photon.SIZE);
                 
                 // White hot center
