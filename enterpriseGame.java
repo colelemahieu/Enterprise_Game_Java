@@ -532,7 +532,6 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                     // If hit, remove photon and bird of prey
                     enterprisePhotons.remove(i);
                     birdActive = false;
-                    enemyPhotons.clear(); // Clear enemy photons too
                     score += 50; // bonus for destroying bird of prey
                     break;
                 }
