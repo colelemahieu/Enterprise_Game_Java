@@ -23,6 +23,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private int birdSpawnDelay = 0;
     private boolean[] keys = new boolean[256];
     private ArrayList<Asteroid> asteroids = new ArrayList<>();
+    private ArrayList<Explosion> explosions = new ArrayList<>();
     private int score = 0;
     private boolean initialized = false;
     private boolean gameOver = false;
@@ -72,6 +73,8 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
     private ArrayList<Photon> enterprisePhotons = new ArrayList<>();
     private int enterprisePhotonCooldown = 0;
     private static final int ENTERPRISE_FIRE_RATE = 20;
+
+   
     
     // Asteroid class
     class Asteroid {
@@ -112,6 +115,99 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 	    this.fromEnterprise = fromEnterprise;
 	    this.speed = fromEnterprise ? -8.0 : 8.0;
 	}
+    }
+
+
+    // Particle class for firework explosions
+    class Particle {
+        double x, y;
+        double vx, vy;
+	double fadeRate;
+        int life;
+        int maxLife;
+        Color color;
+        
+        Particle(double x, double y, double vx, double vy, int maxLife, Color color) {
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.vy = vy;
+            this.life = 0;
+            this.maxLife = maxLife;
+            this.color = color;
+	    this.fadeRate = 20;
+        }
+        
+        void update() {
+            x += vx;
+            y += vy;
+            life++;
+        }
+        
+        boolean isDead() {
+            return life >= maxLife;
+        }
+        
+        float getAlpha() {
+            float progress = (float)life / maxLife;
+	    float fadedProgress = (float)Math.pow(progress, fadeRate);
+            return 1.0f - fadedProgress;
+        }
+    }
+
+
+    // explosion class
+    class Explosion {
+        ArrayList<Particle> particles;
+        int frame;
+        static final int MAX_FRAMES = 15; // Short overall duration
+        
+        Explosion(double x, double y) {
+            this.frame = 0;
+            this.particles = new ArrayList<>();
+            
+            // Create firework particles with higher density
+            int numParticles = 60 + random.nextInt(30);
+            for (int i = 0; i < numParticles; i++) {
+                double angle = random.nextDouble() * Math.PI * 2;
+                
+                double speed;
+                if (random.nextDouble() < 0.3) {
+                    speed = 0.5 + random.nextDouble() * 1.5; // 30% slow particles near center
+                } else {
+                    speed = 3.0 + random.nextDouble() * 2.0; // 70% fast particles
+                }
+                
+                double vx = Math.cos(angle) * speed;
+                double vy = Math.sin(angle) * speed;
+                
+                int maxLife = 8 + random.nextInt(5);
+                
+                // Create color variations (orange, yellow, red)
+                Color color;
+                int colorChoice = random.nextInt(3);
+                if (colorChoice == 0) {
+                    color = new Color(255, 150, 0); // Orange
+                } else if (colorChoice == 1) {
+                    color = new Color(255, 200, 0); // Yellow
+                } else {
+                    color = new Color(255, 80, 0); // Red-orange
+                }
+                
+                particles.add(new Particle(x, y, vx, vy, maxLife, color));
+            }
+        }
+        
+        boolean isFinished() {
+            return frame >= MAX_FRAMES;
+        }
+        
+        void update() {
+            frame++;
+            for (Particle p : particles) {
+                p.update();
+            }
+        }
     }
     
     public enterpriseGame() {
@@ -187,8 +283,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 	    birdOfPreyImage = ImageIO.read(new File("Images/bird_of_prey.png"));
 
 	    // Load custom arcade font
-	    arcadeFont = Font.createFont(Font.TRUETYPE_FONT, 
-                                     new File("Fonts/PressStart2P.ttf")).deriveFont(24f);
+	    arcadeFont = Font.createFont(Font.TRUETYPE_FONT, new File("Fonts/PressStart2P.ttf")).deriveFont(24f);
         } catch (IOException | FontFormatException e) {
             System.err.println("Could not load resources: " + e.getMessage());
             // Create placeholder images if loading fails
@@ -241,6 +336,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
        shipY = CANVAS_HEIGHT - SHIP_HEIGHT;
        score = 0;
        gameOver = false;
+       explosions.clear();
        asteroids.clear();
        asteroidSpeed = 2.5;
        asteroidRate = 3000;
@@ -308,7 +404,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
         birdX = CANVAS_WIDTH / 2 - BIRD_WIDTH / 2; // Center horizontally
         birdY = 100; 
         photonCooldown = PHOTON_FIRE_RATE;
-        enemyPhotons.clear(); // Clear any existing photons
+        enemyPhotons.clear(); 
 	birdSpawnDelay = BIRD_SPAWN_DELAY_FRAMES;
     }
     
@@ -352,6 +448,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
 	    updateBirdOfPrey();
             updatePhotons();
 	    updateEnterprisePhotons();
+	    updateExplosions();
             checkCollisions();
 	    if (enterprisePhotonCooldown > 0) {
                 enterprisePhotonCooldown--;
@@ -512,8 +609,12 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                     p.x + Photon.SIZE > a.x &&
                     p.y < a.y + ASTEROID_SIZE &&
                     p.y + Photon.SIZE > a.y) {
-                    // Remove both if hit
-                    enterprisePhotons.remove(i);
+
+		    // add explosion
+		    explosions.add(new Explosion(a.x + ASTEROID_SIZE / 2, a.y + ASTEROID_SIZE / 2));
+
+		    // Remove both if hit
+		    enterprisePhotons.remove(i);
                     asteroids.remove(j);
                     score += 10; // Bonus points for destroying asteroid
                     break;
@@ -537,7 +638,19 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                 }
             }
         }
+
     }
+
+    private void updateExplosions() {
+	    for (int i = explosions.size() - 1; i >= 0; i--) {
+		Explosion exp = explosions.get(i);
+		exp.update();
+		if (exp.isFinished()) {
+		    explosions.remove(i);
+		}
+	    }
+	}
+    
     
     @Override
     protected void paintComponent(Graphics g) {
@@ -569,6 +682,11 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             for (Asteroid a : asteroids) {
                 g2d.drawImage(asteroidImage, (int)a.x, (int)a.y, ASTEROID_SIZE, ASTEROID_SIZE, null);
             }
+
+	    // Draw explosions
+	    for (Explosion exp : explosions) {
+		drawExplosion(g2d, exp);
+	    }
 
 	    // Draw Bird of Prey
             if (birdActive) {
@@ -622,6 +740,7 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
                 g2d.setColor(Color.WHITE);
                 g2d.fillOval(px + 2, py + 2, Photon.SIZE - 4, Photon.SIZE - 4);
             }
+
             
             // Draw score
             g2d.setColor(Color.WHITE);
@@ -678,6 +797,39 @@ public class enterpriseGame extends JPanel implements ActionListener, KeyListene
             x = buttonRect.x + (buttonRect.width - fm.stringWidth(buttonText)) / 2;
             int y = buttonRect.y + ((buttonRect.height - fm.getHeight()) / 2) + fm.getAscent();
             g2d.drawString(buttonText, x, y);
+        }
+    }
+
+
+    // draw explosions method
+    private void drawExplosion(Graphics2D g2d, Explosion exp) {
+        for (Particle p : exp.particles) {
+            if (p.isDead()) continue;
+            
+            float alpha = p.getAlpha();
+            int alphaValue = (int)(alpha * 255);
+            
+            // Draw particle with glow
+            int px = (int)p.x;
+            int py = (int)p.y;
+            
+            // Outer glow
+            Color glowColor = new Color(p.color.getRed(), p.color.getGreen(), p.color.getBlue(), 
+                                       Math.min(alphaValue / 3, 80));
+            g2d.setColor(glowColor);
+            g2d.fillOval(px - 4, py - 4, 12, 12);
+            
+            // Main particle
+            Color mainColor = new Color(p.color.getRed(), p.color.getGreen(), p.color.getBlue(), 
+                                       alphaValue);
+            g2d.setColor(mainColor);
+            g2d.fillOval(px - 1, py - 1, 6, 6);
+            
+            // Bright center
+            if (alpha > 0.5f) {
+                g2d.setColor(new Color(255, 255, 200, (int)(alphaValue * 0.8f)));
+                g2d.fillOval(px, py, 3, 3);
+            }
         }
     }
     
